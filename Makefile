@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -g -Wall -Wextra -Wpedantic -Wstrict-aliasing
-LIBS = -lSDL2 -lSDL2main
+LIBS = -lSDL2 -lSDL2main -lSDL2_image
 
 SRC = $(wildcard src/**/*.c) $(wildcard src/*.c)
 OBJ = $(SRC:.c=.o)
