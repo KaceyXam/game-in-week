@@ -1,53 +1,79 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_render.h>
+#include <SDL2/SDL_video.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
-struct GameState {
+#include "headers/common.h"
+#include "headers/player.h"
+
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1080
+
+typedef struct {
     SDL_Window *window;
     SDL_Renderer *renderer;
-};
+    SDL_Texture *renderTarget;
+} GameState;
 
-int main() {
+GameState app;
+
+void renderTexture(GameState *app, SDL_Texture *texture, Vector2 *pos) {
+    int w, h;
+    SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+
+    SDL_Rect dest = {.x = pos->x, .y = pos->y, .w = w, .h = h};
+
+    SDL_RenderCopy(app->renderer, texture, NULL, &dest);
+}
+
+void initializeSDL(GameState *app) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("Failed to initialize SDL: %s\n", SDL_GetError());
-        return -1;
+        exit(-1);
     }
 
-    struct GameState app;
-    app.window = SDL_CreateWindow("Game Made in a Week", SDL_WINDOWPOS_CENTERED,
-                                  SDL_WINDOWPOS_CENTERED, 800, 600,
-                                  SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-    if (!app.window) {
+    app->window = SDL_CreateWindow(
+        "Game Made in a Week", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    if (!app->window) {
         printf("Failed to create window: %s", SDL_GetError());
-        return -1;
+        exit(-1);
     }
 
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
         printf("Error initializing SDL Image: %s\n", IMG_GetError());
-        return -1;
+        exit(-1);
     }
 
-    app.renderer = SDL_CreateRenderer(
-        app.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!app.renderer) {
+    app->renderer = SDL_CreateRenderer(
+        app->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!app->renderer) {
         printf("Error Initializing Renderer: %s\n", SDL_GetError());
-        return -1;
+        exit(-1);
     }
 
-    SDL_Rect dest;
-    SDL_Texture *image = IMG_LoadTexture(app.renderer, "assets/spaceship.png");
-    if (!image) {
+    app->renderTarget = SDL_CreateTexture(
+        app->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
+        WINDOW_WIDTH, WINDOW_HEIGHT);
+}
+
+int main() {
+    memset(&app, 0, sizeof(app));
+
+    initializeSDL(&app);
+
+    Player player;
+
+    player.pos = (Vector2){.x = 50, .y = 50};
+
+    player.texture = IMG_LoadTexture(app.renderer, "assets/spaceship.png");
+    if (!player.texture) {
         printf("IMAGE NOT LOADING: %s\n", IMG_GetError());
         return -1;
     }
-    int w;
-    int h;
-    SDL_QueryTexture(image, NULL, NULL, &w, &h);
-    dest.x = 200;
-    dest.y = 200;
-    dest.w = w;
-    dest.h = h;
 
     bool quit = false;
     SDL_Event ev;
@@ -62,17 +88,35 @@ int main() {
             }
         }
 
-        SDL_SetRenderDrawColor(app.renderer, 96, 128, 255, 255);
+        SDL_SetRenderTarget(app.renderer, app.renderTarget);
+
+        SDL_SetRenderDrawColor(app.renderer, 131, 185, 242, 255);
         SDL_RenderClear(app.renderer);
 
-        SDL_RenderCopy(app.renderer, image, NULL, &dest);
+        renderTexture(&app, player.texture, &player.pos);
+
+        SDL_SetRenderTarget(app.renderer, NULL);
+
+        SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 255);
+        SDL_RenderClear(app.renderer);
+
+        int windowWidth, windowHeight;
+        SDL_GetWindowSize(app.window, &windowWidth, &windowHeight);
+
+        double scale = MIN((double)windowWidth / WINDOW_WIDTH,
+                           (double)windowHeight / WINDOW_HEIGHT);
+
+        SDL_Rect destRect = {(windowWidth - (WINDOW_WIDTH * scale)) * 0.5,
+                             (windowHeight - (WINDOW_HEIGHT * scale)) * 0.5,
+                             WINDOW_WIDTH * scale, WINDOW_HEIGHT * scale};
+        SDL_RenderCopy(app.renderer, app.renderTarget, NULL, &destRect);
 
         SDL_RenderPresent(app.renderer);
 
         SDL_Delay(16);
     }
 
-    SDL_DestroyTexture(image);
+    SDL_DestroyTexture(player.texture);
     SDL_DestroyRenderer(app.renderer);
     SDL_DestroyWindow(app.window);
     SDL_Quit();
