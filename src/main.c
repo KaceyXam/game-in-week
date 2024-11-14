@@ -7,16 +7,9 @@
 #include <string.h>
 
 #include "headers/common.h"
-#include "headers/player.h"
 
 #define WINDOW_WIDTH 1920
 #define WINDOW_HEIGHT 1080
-
-typedef struct {
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    SDL_Texture *renderTarget;
-} GameState;
 
 GameState app;
 
@@ -58,6 +51,10 @@ void initializeSDL(GameState *app) {
     app->renderTarget = SDL_CreateTexture(
         app->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
         WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    if (initPlant(app)) {
+        exit(-1);
+    }
 }
 
 int main() {
@@ -65,15 +62,11 @@ int main() {
 
     initializeSDL(&app);
 
-    Player player;
-
-    player.pos = (Vector2){.x = 50, .y = 50};
-
-    player.texture = IMG_LoadTexture(app.renderer, "assets/spaceship.png");
-    if (!player.texture) {
-        printf("IMAGE NOT LOADING: %s\n", IMG_GetError());
-        return -1;
-    }
+    // player.texture = IMG_LoadTexture(app.renderer, "assets/spaceship.png");
+    // if (!player.texture) {
+    //     printf("IMAGE NOT LOADING: %s\n", IMG_GetError());
+    //     return -1;
+    // }
 
     bool quit = false;
     SDL_Event ev;
@@ -93,7 +86,7 @@ int main() {
         SDL_SetRenderDrawColor(app.renderer, 131, 185, 242, 255);
         SDL_RenderClear(app.renderer);
 
-        renderTexture(&app, player.texture, &player.pos);
+        renderPlant(&app);
 
         SDL_SetRenderTarget(app.renderer, NULL);
 
@@ -116,7 +109,6 @@ int main() {
         SDL_Delay(16);
     }
 
-    SDL_DestroyTexture(player.texture);
     SDL_DestroyRenderer(app.renderer);
     SDL_DestroyWindow(app.window);
     SDL_Quit();
